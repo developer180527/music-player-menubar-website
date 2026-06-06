@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MusicPlayerMenubar — Lightweight macOS Music Player</title>
+    <meta name="description" content="A polished, lightweight menubar music player for macOS. Play local music files right from your menu bar.">
+    <meta name="theme-color" content="#0a0a0a">
+    <link rel="icon" href="icon.png">
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --blue: #0ea5e9;
+            --blue-glow: rgba(14, 165, 233, 0.15);
+            --bg: #050505;
+            --surface: #0f0f0f;
+            --surface-2: #1a1a1a;
+            --border: #1f1f1f;
+            --text: #f0f0f0;
+            --text-secondary: #888;
+            --radius: 16px;
+        }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
+        }
+
+        /* Nav */
+        nav {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 100;
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            background: rgba(5, 5, 5, 0.8);
+            border-bottom: 1px solid var(--border);
+        }
+        .nav-inner {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 40px;
+            height: 56px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .nav-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 600;
+            font-size: 15px;
+            text-decoration: none;
+            color: var(--text);
+        }
+        .nav-brand img { width: 28px; height: 28px; border-radius: 6px; }
+        .nav-links { display: flex; align-items: center; gap: 28px; }
+        .nav-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 450;
+            transition: color 0.2s;
+        }
+        .nav-links a:hover { color: var(--text); }
+        .nav-download {
+            background: var(--text) !important;
+            color: var(--bg) !important;
+            padding: 7px 18px;
+            border-radius: 8px;
+            font-weight: 550 !important;
+            transition: opacity 0.2s !important;
+        }
+        .nav-download:hover { opacity: 0.85; }
+
+        /* Hero — side by side */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 80px 40px 40px;
+            position: relative;
+            max-width: 1200px;
+            margin: 0 auto;
+            gap: 60px;
+        }
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 10%;
+            left: 20%;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, var(--blue-glow) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .hero-left {
+            flex: 1;
+            position: relative;
+            z-index: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        .hero-right {
+            flex-shrink: 0;
+            position: relative;
+            z-index: 1;
+        }
+
+        .hero-icon {
+            width: 88px;
+            height: 88px;
+            border-radius: 20px;
+            margin-bottom: 24px;
+            box-shadow: 0 0 60px rgba(14, 165, 233, 0.2), 0 16px 48px rgba(0, 0, 0, 0.5);
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 14px;
+            border-radius: 100px;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 20px;
+        }
+        .hero-badge span { color: var(--blue); }
+
+        h1 {
+            font-size: clamp(36px, 4.5vw, 52px);
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            line-height: 1.1;
+            margin-bottom: 16px;
+        }
+        h1 .gradient {
+            background: linear-gradient(135deg, #38bdf8, #0ea5e9, #0284c7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero-sub {
+            font-size: 16px;
+            color: var(--text-secondary);
+            max-width: 440px;
+            margin-bottom: 28px;
+            line-height: 1.7;
+        }
+
+        /* Stats inline */
+        .hero-stats {
+            display: flex;
+            gap: 28px;
+            margin-bottom: 28px;
+            flex-wrap: wrap;
+        }
+        .hero-stat {
+            text-align: left;
+            padding: 0;
+        }
+        .hero-stat-value {
+            font-size: 18px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #38bdf8, #0284c7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .hero-stat-label {
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+
+        .hero-actions {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 550;
+            text-decoration: none;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            border: none;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #38bdf8, #0284c7);
+            color: #fff;
+            box-shadow: 0 0 30px rgba(14, 165, 233, 0.3), 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 40px rgba(14, 165, 233, 0.4), 0 8px 30px rgba(0, 0, 0, 0.4);
+        }
+        .btn-secondary {
+            background: var(--surface-2);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+        .btn-secondary:hover {
+            background: #222;
+            border-color: #333;
+        }
+        .btn svg { width: 16px; height: 16px; }
+
+        .hero-meta {
+            font-size: 12px;
+            color: var(--text-secondary);
+            display: flex;
+            gap: 18px;
+            flex-wrap: wrap;
+        }
+        .hero-meta span { display: flex; align-items: center; gap: 5px; }
+
+        /* Screenshot right side */
+        .screenshot-wrapper {
+            position: relative;
+            display: inline-block;
+        }
+        .screenshot-wrapper::before {
+            content: '';
+            position: absolute;
+            inset: -1px;
+            border-radius: 20px;
+            padding: 1px;
+            background: linear-gradient(135deg, rgba(56, 189, 248, 0.3), rgba(2, 132, 199, 0.1), transparent);
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            pointer-events: none;
+        }
+        .screenshot-wrapper img {
+            width: 320px;
+            border-radius: 20px;
+            box-shadow: 0 0 80px rgba(14, 165, 233, 0.12), 0 30px 80px rgba(0, 0, 0, 0.6);
+        }
+
+        /* Features */
+        .features {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 80px 40px 100px;
+        }
+        .features-header {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+        .features-header h2 {
+            font-size: 36px;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            margin-bottom: 12px;
+        }
+        .features-header p {
+            color: var(--text-secondary);
+            font-size: 17px;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+        }
+        .feature-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 28px;
+            transition: border-color 0.3s, transform 0.2s;
+        }
+        .feature-card:hover {
+            border-color: #2a2a2a;
+            transform: translateY(-2px);
+        }
+        .feature-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            background: var(--surface-2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 16px;
+            font-size: 18px;
+        }
+        .feature-card h3 {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+        .feature-card p {
+            font-size: 13px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        /* Footer */
+        footer {
+            border-top: 1px solid var(--border);
+            padding: 32px;
+            text-align: center;
+        }
+        .footer-inner {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        footer p {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+        footer a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+        footer a:hover { color: var(--text); }
+        .footer-links { display: flex; gap: 24px; }
+        .footer-links a { font-size: 13px; }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .hero {
+                flex-direction: column-reverse;
+                text-align: center;
+                padding-top: 100px;
+                gap: 40px;
+            }
+            .hero-left { display: flex; flex-direction: column; align-items: center; }
+            .hero-sub { max-width: 100%; }
+            .hero-actions { justify-content: center; }
+            .hero-stats { justify-content: center; }
+            .hero-stat { text-align: center; }
+            .hero-meta { justify-content: center; }
+            .screenshot-wrapper img { width: 260px; }
+        }
+        @media (max-width: 768px) {
+            .features-grid { grid-template-columns: 1fr; }
+            .nav-links a:not(.nav-download) { display: none; }
+            .footer-inner { flex-direction: column; gap: 16px; }
+        }
+        @media (min-width: 769px) and (max-width: 1024px) {
+            .features-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        /* Animations */
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.96); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .animate {
+            opacity: 0;
+            animation: fadeUp 0.6s ease forwards;
+        }
+        .animate-in {
+            opacity: 0;
+            animation: fadeIn 0.8s ease forwards;
+        }
+        .animate-d1 { animation-delay: 0.1s; }
+        .animate-d2 { animation-delay: 0.15s; }
+        .animate-d3 { animation-delay: 0.2s; }
+        .animate-d4 { animation-delay: 0.3s; }
+        .animate-d5 { animation-delay: 0.4s; }
+        .animate-d6 { animation-delay: 0.5s; }
+        .animate-d7 { animation-delay: 0.6s; }
+    </style>
+</head>
+<body>
+
+    <nav>
+        <div class="nav-inner">
+            <a href="#" class="nav-brand">
+                <img src="icon.png" alt="MusicPlayerMenubar">
+                MusicPlayerMenubar
+            </a>
+            <div class="nav-links">
+                <a href="#features">Features</a>
+                <a href="https://github.com/developer180527/MusicPlayerMenubar" target="_blank">GitHub</a>
+                <a href="https://github.com/developer180527/MusicPlayerMenubar/releases/latest/download/MusicPlayerMenubar-v1.0.1-universal.dmg" class="nav-download">Download</a>
+            </div>
+        </div>
+    </nav>
+
+    <section class="hero">
+        <div class="hero-left">
+            <img src="icon.png" alt="MusicPlayerMenubar" class="hero-icon animate">
+
+            <div class="hero-badge animate animate-d1">
+                <span>v1.0.1</span> &mdash; Universal Binary for Apple Silicon &amp; Intel
+            </div>
+
+            <h1 class="animate animate-d2">
+                Music from your<br><span class="gradient">menu bar.</span>
+            </h1>
+
+            <p class="hero-sub animate animate-d3">
+                A lightweight, polished music player that lives in your macOS menu bar.
+                Play local files, search your library, and control playback — all without leaving what you're doing.
+            </p>
+
+            <div class="hero-stats animate animate-d4">
+                <div class="hero-stat">
+                    <div class="hero-stat-value">~1 MB</div>
+                    <div class="hero-stat-label">App size</div>
+                </div>
+                <div class="hero-stat">
+                    <div class="hero-stat-value">&lt;8 MB</div>
+                    <div class="hero-stat-label">Memory cap</div>
+                </div>
+                <div class="hero-stat">
+                    <div class="hero-stat-value">9+</div>
+                    <div class="hero-stat-label">Audio formats</div>
+                </div>
+                <div class="hero-stat">
+                    <div class="hero-stat-value">0</div>
+                    <div class="hero-stat-label">Subscriptions</div>
+                </div>
+            </div>
+
+            <div class="hero-actions animate animate-d5">
+                <a href="https://github.com/developer180527/MusicPlayerMenubar/releases/latest/download/MusicPlayerMenubar-v1.0.1-universal.dmg" class="btn btn-primary">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    Download for macOS
+                </a>
+                <a href="https://github.com/developer180527/MusicPlayerMenubar" target="_blank" class="btn btn-secondary">
+                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+                    View Source
+                </a>
+            </div>
+
+            <div class="hero-meta animate animate-d6">
+                <span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                    macOS 14+
+                </span>
+                <span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                    Universal Binary
+                </span>
+                <span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
+                    ~1 MB
+                </span>
+            </div>
+        </div>
+
+        <div class="hero-right">
+            <div class="screenshot-wrapper animate-in animate-d7">
+                <img src="Screenshot.png" alt="MusicPlayerMenubar in action">
+            </div>
+        </div>
+    </section>
+
+    <section class="features" id="features">
+        <div class="features-header">
+            <h2>Everything you need. Nothing you don't.</h2>
+            <p>Built for one thing — playing your local music without getting in the way.</p>
+        </div>
+
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">&#9834;</div>
+                <h3>Local Playback</h3>
+                <p>Plays MP3, M4A, AAC, WAV, FLAC, AIFF and more. Your music, your files, no streaming required.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">&#8635;</div>
+                <h3>Loop Modes</h3>
+                <p>Loop a single track on repeat, loop your entire library, or play straight through. One click to cycle.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">&#128269;</div>
+                <h3>Instant Search</h3>
+                <p>Filter your library by title, artist, or album. Results update as you type — find any track in seconds.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">&#128190;</div>
+                <h3>Persistent Library</h3>
+                <p>Your track list is saved automatically and survives app restarts. Deleted files are auto-pruned on launch.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">&#127912;</div>
+                <h3>Album Artwork</h3>
+                <p>Extracts and displays embedded artwork as lazy-loaded thumbnails. Metadata for title, artist, album, and duration.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">&#9201;</div>
+                <h3>Lightweight</h3>
+                <p>Under 8 MB memory for artwork cache. No Electron, no web views — pure native Swift and AppKit.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">&#9654;</div>
+                <h3>Full Transport</h3>
+                <p>Play, pause, next, previous, and smooth scrub seeking. Volume slider appears on hover — clean and minimal.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">&#127916;</div>
+                <h3>Dynamic Icon</h3>
+                <p>Menubar shows a music note when idle and an animated waveform when playing — always know at a glance.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">&#128187;</div>
+                <h3>Universal Binary</h3>
+                <p>Runs natively on both Apple Silicon and Intel Macs. Single binary, no Rosetta needed.</p>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="footer-inner">
+            <p>&copy; 2026 MusicPlayerMenubar. Open source under MIT.</p>
+            <div class="footer-links">
+                <a href="https://github.com/developer180527/MusicPlayerMenubar" target="_blank">GitHub</a>
+                <a href="https://github.com/developer180527/MusicPlayerMenubar/releases" target="_blank">Releases</a>
+                <a href="https://github.com/developer180527/MusicPlayerMenubar/issues" target="_blank">Issues</a>
+            </div>
+        </div>
+    </footer>
+
+</body>
+</html>
